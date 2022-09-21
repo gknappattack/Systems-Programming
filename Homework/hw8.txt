@@ -1,0 +1,52 @@
+9.11 a, b, c
+
+Virtual address: 0x027c
+
+A. Virtual Address Format:
+
+    TLBT=0x2      TLBI=0x1  VPO=0x3c
+   0  0  0  0  1 0 | 0 1 | 1 1 1 1 0 0
+   13 12 11 10 9 8 | 7 6 | 5 4 3 2 1 0
+       VPN: 0x09
+
+B. Address Translation
+
+VPN: 0x09
+TLB Index: 0x1
+TLB tag: 0x2
+TLB hit?: No
+Page fault? No
+PPN: 0x17
+
+C. Physical Address format:
+
+      CT=0x33      CI=0xf    CO=0x0
+   0  1  0 1 1 1 | 1 1 1 1 | 0 0
+   11 10 9 8 7 6 | 5 4 3 2 | 1 0
+
+
+9.12 a, b, c
+
+Virtual address: 0x03a9
+
+A. Virtual Address Format:
+
+   TLBT=0x3       TLBI=0x2  VPO=0x29
+   0  0  0  0  1 1 | 1 0 | 1 0 1 0 0 1
+   13 12 11 10 9 8 | 7 6 | 5 4 3 2 1 0
+       VPN: 0x0e
+
+B. Address Translation
+
+VPN: 0x0e
+TLB Index: 0x2
+TLB tag: 0x3 
+TLB hit?: No
+Page fault?: No
+PPN: 0x11
+
+C. Physical Address format:
+
+      CT=0x02      CI=0xa    CO=0x1
+   0  1  0 0 0 1 | 1 0 1 0 | 0 1
+   11 10 9 8 7 6 | 5 4 3 2 | 1 0

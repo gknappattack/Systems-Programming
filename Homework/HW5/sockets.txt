@@ -1,0 +1,71 @@
+1.
+
+a) The two system calls used are socket() to create the UDP socket and connect() to try and connect to the server for reading and writing.
+b) Data can still be sent to a server without using connect, if sendto() or sendmsg() is used while passing in the destination address. Connect allows you to not have to pass in the argument every time you want to write to the server.
+
+2. ./server 1035
+
+3. 
+a) ss -lu -p -n "sport = :1035"
+b) State     Recv-Q     Send-Q    Local Address:Port    Peer Address:Port      Process
+   UNCONN    0          0         0.0.0.0:1035          0.0.0.0:*              users:(("server", pid=3637059,fd=3))
+c) The state reads Unconnected, since the client has not run yet. The Recv-Q and Send-Q are the number of questions sent and received by connection. Local Address:port shows the address and port number in use, 1035 in this case. Peer address:Port would show the address of the connected server when it is in use. Process shows the process controling the server, in this case, our server.c program, along with its pid and file descriptor count.
+
+4)
+
+a) ./client -4 utah 1035 foo bar baz catvideo
+b) 
+Sent 4 bytes to server
+Recieved 4 bytes: foo
+Sent 4 bytes to server
+Recieved 4 bytes: bar
+Sent 4 bytes to server
+Recieved 4 bytes: baz
+Sent 9 bytes to server
+Recieved 9 bytes: catvideo
+
+5)
+a) 4 calls to write are made by the client
+b) 4 datagrams have been sent before the second recvfrom() is called again
+c) 4 total calls of recvfrom are made to process all the datagrams sent
+d) UDP reads datagrams as their are received, pending datagrams are queued to be read in the order they are received. The sleep call causes the datagrams to arrive before the second recvfrom() call is made, yet instead of handling all of the remaining datagrams at once, it needs to run 4 separate times in order to handle them all, making it an inefficient process, since it can't handle the packets in a more robust way when they arrive faster than can be received.
+
+6) With a UDP socket, datagrams could be sent immediately because the UDP socket was not listening and trying to establish a connection with a client socket. The TCP socket instead has to be set up to make its file descriptor a listening file descriptor, then set to accept connections made, before any reading/writing happens on it. 
+
+7) In UDP when I called connect in the client, the client looked for the UDP socket and when it found it, send the messages to it without anything else happeing. Now in TCP, when connect is called, the client socket's file descriptor will make the connection request to the server's listening file descriptor. When that connection is accepted, the server opens a connection file descriptor that is separate from the listening one that was found by the client. Reading and writing from the server then takes place on the new connection file descriptor, not on the listening one. The process is much less anonymous compared to UDP where once connect is called and the connection is made, reading and writing takes place immediately afterwards. 
+
+8)
+a) ss -lt -p -n "sport = :1035"
+b) State    Recv-Q    Send-Q   Local Address:Port    Peer Address:Port   Process
+   LISTEN   0         100      0.0.0.0:1035          0.0.0.0.:*          users:(("sever", pid=4070943,fd=3))
+
+9)
+a) ./client -4 utah 1035 foo bar baz catvideo
+b) 
+Sent 4 bytes to server
+Recieved 4 bytes: foo
+Sent 4 bytes to server
+Recieved 4 bytes: bar
+Sent 4 bytes to server
+Recieved 4 bytes: baz
+Sent 9 bytes to server
+Recieved 9 bytes: catvideo
+
+10)
+a) ss -t -p -n "sport = :1035" 
+b) State    Recv-Q    Send-Q   Local Address:Port    Peer Address:Port    Process
+   ESTAB   0          0        192.168.2.147:1035    192.168.2.144:52964  users:(("sever", pid=4070943,fd=3))
+c) This time, our state is ESTAB, meaning the TCP socket is no longer listening, it has an established connection with our client. The Local Address:Port shows the IP address and port of the server, and the Peer Address:Port shows the IP address and port of the client. Our process shows the current process info of the server.
+
+11)
+a) ss -t -p -n "sport = :1035"
+b) State    Recv-Q    Send-Q   Local Address:Port    Peer Address:Port    Process
+c) In the code, we set up the server to break out of the read/write loop once it receives 0 bytes from the client. After the 4 messages are sent, the client sends no bytes, so the server breaks the loop and closes along with the client. Since the server is no longer active, listening, or even running, the ss command does not show any information, since the connection on the port is gone now.
+
+12)
+a) 4 write calls were made by the client to the server
+b) All 21 bytes sent by the client were received before the second recv() call.
+c) Only the one recv() call was needed to get all of the bytes that were sent, hence the output "Recieved 21 bytes from maine.cs.byu.edu:53010" that was printed out. Recv() did run a second time, returned 0 bytes so the loop broke.
+d) This is due to the differences between UDP and TCP. In UDP, the datagrams were sent and handled one at at time, even if they all arrived before the first read took place. 4 datagrams means 4 receives are called. With TCP, bytes are handled as they arrive, not queued up for processing in datagram packets. Because of this, the 21 bytes are handled at the same time.
+
+13)

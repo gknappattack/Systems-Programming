@@ -1,0 +1,28 @@
+level0:
+6/Q2LbNWe5a4KTk8ymUVrKuQ2J8B+/2+
+BANDIT_LEVEL=1 ./level1
+level1:
+4utUC/pa/7fK5zU0Q3qPKPbmicmozKSc
+./level2 2> /dev/null
+level2:
+WvmlqTFW+sn+TgJD9nEifb2cFNaDYaL3
+grep "^eget" level3.txt | awk '{print $2}'
+level3:
+eAyRe5KDtiqxDoeqVCABnj6hBMhCR/Bd
+sort level4.txt | tail -n 1 | base64 -d
+level4:
+d9addec2125e48f5a24be719eb35f275
+dig bandit.cs324.internet-measurement.cs.byu.edu txt +short | md5sum | cut -b -32
+level5:
+Jp1NL6O/H7uPUesDQ7r1TPLH2oGlTyHn
+tar -xOzf level6.tar.gz | tr "F" "L"
+level6:
+fb7cf39e8e0becdcd0468863cdc653e6
+curl --silent https://imaal.byu.edu/cs324/bandit.txt | sha1sum | cut -b -32
+level7:
+Uoux218Rtfi8Eg1UmIfZ9m4NErlTW+d9
+./level8 ^Z fg
+level8:
+WWvs5PXxiY81gLjw60+mBccj6bGACwdU
+sort level9.txt | uniq -c | sort | tail -n 1 | awk '{print $2}'
+level9:

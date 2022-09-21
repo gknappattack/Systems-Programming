@@ -1,0 +1,154 @@
+1) exec.c first prints out its own process id, then sleeps the process for 30 seconds. After the sleep is over, exec checks for command line arguments. If there is no other besides ./exec, it will exit and print "No program to exec. Exiting...\n". If it finds a second argument it will print the argument and attempt to run it with execve.
+
+2) The final print() statement will only get executed when execve returns an error. Execve normally does not return, so it will run the program passed as an argument to completion and terminate the process, not printing the final print() in exec.c. However, if there is an error such as a bad program name or path, then execve will return -1 and exec.c will continue to the final line and print.
+
+3) ./exec "/bin/cat"
+
+Program "./exec" has pid 2115874. Sleeping.
+Running exec of "/bin/cat"
+hello
+hello
+testing exec
+testing exec
+^C
+
+4)
+
+Terminal 1:
+./exec "/bin/cat"
+Program "./exec" has pid 2118633. Sleeping.
+Running exec of "/bin/cat"
+
+Terminal 2
+ps -p 2118633 -o user,pid,ppid,state,ucmd
+USER	    PID	   PPID S CMD
+gknapp	2118633	2116564 S exec
+ps -p 2118633 -o user,pid,ppid,state,ucmd
+USER	    PID	   PPID S CMD
+gknapp	2118633	2116564 S cat
+
+5) The output is very similar aside from the CMD column of the ps output. This makes sense because when run execve, we are not creating a new process like with fork, but running a new program in the context of the old one. So we should not expect the PID or the PPID to change. However, execve is running a new program, so the command used to run it, exec for the first ps and cat for the second, should change because the program being ran has changed. 
+
+6) ./exec fakeprogram
+Program "./exec" has pid 2119250. Sleeping
+Running exec of "fakeprogram"
+"End of program "./exec".
+
+This time, because the program I passed as an argument did not exist, execve did not run successfully and returned a -1 error. Normally execve will run the new program to completion and terminate. However, because there was no program to run, the code in exec.c continued to run, giving us the final line of output that did not get printed out before.
+
+7) fork.c begins by creating an integer variable pid and printing the program and its pid. Next, it runs fork in the if statement if ((pid = fork()) < 0). If an error occurs and fork returns -1, then it will print an error message and exit.
+
+If the fork is successful the parent and child process will continue after the if statement. Both parent and child will print "Section A: pid ####" and sleep for 30 seconds. After 30 seconds, the parent and child will enter the second if else branches. The child will enter the if branch because pid should = 0 from the fork call, and it will then print "Section B" sleep for 30 seconds, then print "Section B done sleeping" and exit. The parent process will take the else branch and print "Section C", do 2 30 second sleeps, then print "Section C done sleeping" and exit. Section D will not be run because both processes will terminate within their respective if-else branches.
+
+8) Parent Process: A, C
+Child Process: A, B
+
+9)
+
+Terminal 1:
+./fork
+Section A;  pid 2122844
+Section A;  pid 2122845
+Section B
+Section C
+Section B done sleeping
+Section C done sleeping
+
+Terminal 2: 
+ps -p 2122844,2122845 -o user,pid,ppid,state,ucmd --forest
+USER	    PID	   PPID S CMD
+gknapp	2122844	2116564 S fork
+gknapp	2122845	2122844 S \_fork
+ps -p 2122844,2122845 -o user,pid,ppid,state,ucmd --forest
+USER	    PID	   PPID S CMD
+gknapp	2122844	2116564 S fork
+gknapp	2122845	2122844 Z \_fork<defunct>
+
+10) The first ps command showed the two processes, identifying 2122845 as the child of the parent as seen in the \_fork text under CMD. After the second ps call, there are two changes to the output. The first is the state of the child process which has changed from S to Z. It was S before because the process was currently sleeping (S=interruptible sleep), but is now Z (Z=zombie) because it exited before the parent process finished. The second difference is the <defunct> tag added to the end of the command, indicating similarly to Z that the process has finished and exited, but the parent is still running and retaining information from the child so it cannot be killed yet.
+
+11) waitpid(-1, NULL, 0); I placed the waitpid command after the first sleep in Section C so it would reap the child process as soon as it came out of the first sleep.
+
+12)
+
+Terminal 1:
+./fork
+Section A;  pid 2126055
+Section A;  pid 2126056
+Section B
+Section C
+Section B done sleeping
+Section C done sleeping
+
+Terminal 2: 
+ps -p 2126055,2126056 -o user,pid,ppid,state,ucmd --forest
+USER	    PID	   PPID S CMD
+gknapp	2126055	2116564 S fork
+gknapp	2126056	2126055 S \_fork
+ps -p 2126055,2126056 -o user,pid,ppid,state,ucmd --forest
+USER	    PID	   PPID S CMD
+gknapp	2126056	      1 S fork
+
+13) The first output lists both processes and their information. The second ps output only shows the child now, listing it as fork, without the child indication of \_ and the PPID is now 1. This indicates that the child process became an orphan when the parent process terminated, so it was adopted by init (PID 1) and is running as its own process now.
+
+14)
+
+BEFORE FORK
+SECTION A
+SECTION C
+BEFORE FORK
+SECTION A
+SECTION B
+
+15)
+The way my code ran, the fputs() for the parent processes executed before any of the children, so the output is the three lines from the parent, followed by the three lines of the children. 
+
+16)
+
+Section A;  pid 2135445
+Section A;  pid 2135446
+Section B
+Section B done sleeping
+Program "./fork" has pid 2135446. Sleeping
+Running exec of "/bin/cat"
+foobar
+
+Section C
+Section C done sleeping
+
+17)
+
+echo foobar | ./fork /bin/cat
+
+Section A;  pid 2122844
+Section A;  pid 2122845
+Section B
+Section C
+Section B done sleeping
+Section C done sleeping
+
+18)
+
+Terminal output:
+
+echo foobar | ./fork /bin/cat
+
+Starting program; process had pid 2136587
+Section A; pid 2136587
+Section A; pid 2136588
+Section B
+Section B done sleeping
+Program "./fork" has pid 2136588. Sleeping.
+
+Section C
+Section C done sleeping
+
+fork-output.txt output:
+Running exec of "/bin/cat"
+foobar
+BEFORE FORK
+SECTION A
+SECTION C
+
+
+
+

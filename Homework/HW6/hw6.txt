@@ -1,0 +1,81 @@
+1)
+
+USER	PID	PPID	 NWLP	LWP	  S	CMD
+gknapp	1213074 1213008	 1	1213074	  S	echoserveri
+
+2) The PID and the LWP have the same id, meaning that here is only the one main thread that is being run. That makes sense because the echo only worked with the first panel that connected to the server, indicating there is no concurrency going on right now.
+
+3) When I Ctrl+C the first panel that was connected to the server, the message of the second panel that did not go through the first time was sent and echoed back through the server. Same with the third panel once I closed the second one.
+
+4)
+
+USER	PID	PPID	 NWLP	LWP	  S	CMD
+gknapp	1213734 1213008	 1	1213734	  S	echoserverp
+gknapp	1213775 1213734	 1	1213775	  S	echoserverp
+gknapp	1213796 1213734	 1	1213796	  S	echoserverp
+gknapp	1213804 1213734	 1	1213804	  S	echoserverp
+
+
+5)
+There are 4 processes (in other words 4 threads, but all are just the main thread of a process) running, each one is a main thread of either the parent process or one of the three children processes. When the server started, process with PID 1213734 started and handled making connections. When a connection was made, a child process was started, therefore allowing each process to handle a different connection so they run concurrently. That is why the PPID of the three bottom processes in the output is the same as the PID of the first, they are children running their main threads.
+
+6)
+
+USER	PID	PPID	 NWLP	LWP	  S	CMD
+gknapp	1214368 1213008	 4	1214368	  S	echoservert
+gknapp	1214368 1213008	 4	1214379	  S	echoservert
+gknapp	1214368 1213008	 4	1214386	  S	echoservert
+gknapp	1214368 1213008	 4	1214391	  S	echoservert
+
+7) There is only 1 process running this time, with 4 threads going concurrently. This is easy to confirm since all four of the entries have the same PID, so they are not children processes being made, but threads. The first one is the main thread since the LWP is the same as the PID. The three below are threads that the main thread created. The NWLP is 4, so all of these threads are active and currently in use at the same time.
+
+
+8)
+USER	PID	PPID	 NWLP	LWP	  S	CMD
+gknapp	1215068 1213008	 11	1215068	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215069	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215070	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215071	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215072	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215073	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215074	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215075	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215076	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215077	  S	echoservert_pre
+gknapp	1215068 1213008	 11	1215078	  S	echoservert_pre
+
+
+9)
+There are 11 threads and 1 process in this server. The first thread is the main thread or the main process that is controlling everything, and the rest are the 10 threads that were created for the threadpool. Even through there are only the three connections, they are given a thread from the pool to write to while they are open. Once the connection closes, the thread remains (the ps report does not change at all when you run the command after closing the connections), it just becomes unassigned, so the 10 threads exist for the duration of the process.
+
+10)
+
+echoserverp - Process-based Concurrency
+
+Pros: It is incredibly easy to do with fork()/exec(), requires much less syntax and code structures (semaphores, variable control, etc.) than any kind of thread based concurrency. Variables/data are separate by processes, so it is less risky to send messages and communicate from process to process.
+
+Cons: It is the slowest of any kind of concurrency. The creation of a new child process and running/maintaining that child process is very resource heavy. While it did not matter in this case with only 3 connections running, in an actual industy level program, performance would suffer dramatically when the number of connections reaches thousands and ten-thousands, making this only a realistic choice for small server projects.
+
+11)
+
+echoservert - Simple thread-based concurrency
+
+Pros: Even a simple thread based program will outperform the process-based on because the threads are much faster to maintain and run, even as the number of threads increases. The speed advantage is the main incentive to use threads instead of child processes.
+
+Cons: The most clear con is that there is a clear limit to how many threads can be created. Depending on the variable type used to create the thread ids that are assigned, you will run out of threads eventually because the variable will overflow eventually, which makes this form of concurrency not a fool-proof method. On top of this, any thread bases concurrency will likely have more hard to diagnose bugs since shared variables and data can be difficult to manage, especially without using semaphores and other control methods. 
+
+12)
+
+Threadpool-basec concurrency
+
+Pros: You get the speed benefits of using threads instead of processes without the risk of running out of memory/space to create new threads since there is an upper limit of how many can run at the same time. It is a bit of the best of both worlds in that sense.
+
+Cons: The downside to limiting the threadpool is that new connections will have to sit and idle while a different thread runs to completion so that it can take its place. This is the tradeoff of safety with memory and space for creating threads, you cannot accomadate for an unlimited number of threads, so a balance of how many threads to put in the pool to how many expected concurrent users there will be needs to be found.
+
+13) The producer role is found on line 64, where the call to sbuf_insert(&sbuf, connfd); is made. This is the producer because it is where the main thread is adding the file descripter to the shared buffer, which the threads then consumer below in the thread function.
+
+14) The consumer role then is found on line 72, int connfd = sbuf_remove(&buf). This is where the threads take the file descripter added to the shared buffer by the main thread and "consume" it; in this case, they use it to run the echo server for the fd the was saved.
+
+15) When slots is 0, the thread is suspended until a slot is freed up when another thread is done and the the space is freed up because slots is the semphore in the P function that checks to make the threads wait when they cannot continue. As soon as slots is non-zero, the thread will continue and the space will be allocated to insert into the shared buffer.
+
+16) The producer will run line 32 and 33, or the V function in the semaphore model, which will announce there is a new item to be consumed, updated the mutex and waking up the thread that is waiting so it can be used by one of the consumer threads.
