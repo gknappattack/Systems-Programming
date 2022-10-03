@@ -20,3 +20,5 @@ Coursework and projects for BYU CS 324 Systems Programming.
 - Protocols
 
 - Non-blocking I/O.
+
+(From the BYU Course Catalog: https://catalog.byu.edu/physical-and-mathematical-sciences/computer-science/systems-programming)
